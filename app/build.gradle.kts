@@ -1,0 +1,20 @@
+plugins {
+    id("com.android.application")
+}
+
+android {
+    namespace = "com.example.xiaomiaibypass"
+    compileSdk = 34
+
+    defaultConfig {
+        applicationId = "com.example.xiaomiaibypass"
+        minSdk = 26
+        targetSdk = 34
+        versionCode = 1
+        versionName = "1.0"
+    }
+}
+
+dependencies {
+    compileOnly("de.robv.android.xposed:api:82")
+}

@@ -1,5 +1,8 @@
 package com.example.xiaomiaibypass;
 
+import android.content.ContentResolver;
+import android.provider.Settings;
+
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XC_MethodReplacement;
@@ -81,6 +84,36 @@ public class MainHook implements IXposedHookLoadPackage {
             }
         } catch (Throwable t) {
             // ignore
+        }
+
+        // 6. 攔截小愛同學（com.miui.voiceassist）軟重啟/啟動時主動將電源鍵關閉 (寫 0) 的行為
+        if ("com.miui.voiceassist".equals(pkg)) {
+            try {
+                Class<?> sysSettingsClass = XposedHelpers.findClassIfExists("android.provider.Settings$System", lpparam.classLoader);
+                if (sysSettingsClass != null) {
+                    XposedHelpers.findAndHookMethod(
+                        sysSettingsClass,
+                        "putInt",
+                        ContentResolver.class,
+                        String.class,
+                        int.class,
+                        new XC_MethodHook() {
+                            @Override
+                            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                                String key = (String) param.args[1];
+                                int value = (int) param.args[2];
+                                // 當小愛 App 企圖把 voice_assist_power_key_enable 設為 0 時，直接攔截並丟棄
+                                if ("voice_assist_power_key_enable".equals(key) && value == 0) {
+                                    XposedBridge.log(TAG + "Prevented com.miui.voiceassist from disabling power key (putInt -> 0)");
+                                    param.setResult(true); // 假裝成功，實則丟棄修改
+                                }
+                            }
+                        }
+                    );
+                }
+            } catch (Throwable t) {
+                XposedBridge.log(TAG + "Failed to hook Settings.System.putInt: " + t.getMessage());
+            }
         }
     }
 }
